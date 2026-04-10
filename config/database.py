@@ -1,12 +1,26 @@
 from argon2 import PasswordHasher
 import sqlite3
+import datetime
+
+horario_atual = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
 async def init_db() -> None:
     try:
         conn = sqlite3.connect("banco_dados.db")
         cursor = conn.cursor()
+
         # criar tabelas se não existirem
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                passwordHash TEXT NOT NULL
+            )
+            """
+        )
+        
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS passwords (
@@ -16,20 +30,24 @@ async def init_db() -> None:
                 password TEXT NOT NULL,
                 notes TEXT DEFAULT NULL,
                 user_id INTEGER,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT (datetime('now','localtime')),
+                updated_at TIMESTAMP NOT NULL DEFAULT (datetime('now','localtime')),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
             """
         )
+
         cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT NOT NULL UNIQUE,
-                passwordHash TEXT NOT NULL
-            )
-            """
+            CREATE TRIGGER IF NOT EXISTS update_passwords_updated_at
+            AFTER UPDATE ON passwords
+            FOR EACH ROW
+            BEGIN
+               UPDATE passwords
+               SET updated_at = datetime('now','localtime')
+               WHERE id = OLD.id;
+            END;
+        """
         )
         conn.commit()
     except Exception as e:
