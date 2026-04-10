@@ -64,19 +64,19 @@ class DashboardLayout:
 
     def _table_panel(self) -> list:
         return [
-            [sg.Text("Senhas salvas", font=("Helvetica", 11, "bold"))],
             [
                 sg.Table(
                     values=self._build_table(),
                     headings=["Serviço", "Credencial", "Senha", "Notas"],
                     key="-TABLE-",
                     auto_size_columns=False,
-                    col_widths=[16, 18, 14, 22],        # 4 colunas → 4 larguras
+                    col_widths=[16, 18, 14, 22], # 4 colunas → 4 larguras
                     num_rows=12,
                     enable_events=True,
                     select_mode=sg.TABLE_SELECT_MODE_BROWSE,
                     expand_x=True,
                     expand_y=True,
+                    justification="left",
                 )
             ],
             [
@@ -90,10 +90,10 @@ class DashboardLayout:
         return [
             [sg.Text("Adicionar senha", font=("Helvetica", 11, "bold"))],
             [sg.HorizontalSeparator()],
-            [sg.Text("Serviço   ", size=10), sg.Input(key="-SERVICO-",    size=22)],
+            [sg.Text("Serviço", size=10), sg.Input(key="-SERVICO-",    size=22)],
             [sg.Text("Credencial", size=10), sg.Input(key="-CREDENCIAL-", size=22)],
-            [sg.Text("Senha     ", size=10), sg.Input(password_char="*", key="-PASS-", size=22)],
-            [sg.Text("Notas     ", size=10), sg.Multiline(key="-NOTES-",  size=(22, 3))],
+            [sg.Text("Senha", size=10), sg.Input(password_char="*", key="-PASS-", size=22)],
+            [sg.Text("Notas", size=10), sg.Multiline(key="-NOTES-",  size=(22, 3))],
             [sg.HorizontalSeparator()],
             [sg.Push(), sg.Button("💾  Salvar", key="-SAVE-", size=12), sg.Push()],
         ]
@@ -135,17 +135,14 @@ class DashboardLayout:
                 break
 
             selected = values.get("-TABLE-", [])
-            table    = self._build_table()
-            row_idx  = selected[0] if selected else -1
-            servico  = table[row_idx][0] if 0 <= row_idx < len(table) else None
+            table = self._build_table()
+            row_idx = selected[0] if selected else -1
+            servico = table[row_idx][0] if 0 <= row_idx < len(table) else None
 
             # ── REVELAR / OCULTAR ──────────────────────────────────────
             if event == "-REVEAL-":
                 if servico is None:
                     sg.popup("Selecione uma linha para revelar a senha.", title="Atenção")
-                    continue
-                label = "Ocultar" if servico in self.revealed else "Revelar"
-                if sg.popup_yes_no(f"{label} a senha de '{servico}'?", title="Confirmar") != "Yes":
                     continue
                 self.revealed.discard(servico) if servico in self.revealed else self.revealed.add(servico)
                 window["-TABLE-"].update(values=self._build_table())
@@ -184,10 +181,10 @@ class DashboardLayout:
 
             # ── SALVAR NOVA SENHA ──────────────────────────────────────
             if event == "-SAVE-":
-                servico_form    = values["-SERVICO-"].strip()
+                servico_form = values["-SERVICO-"].strip()
                 credencial_form = values["-CREDENCIAL-"].strip()
-                passwd_form     = values["-PASS-"]
-                notes_form      = values["-NOTES-"].strip()
+                passwd_form = values["-PASS-"]
+                notes_form = values["-NOTES-"].strip()
 
                 if not servico_form or not passwd_form:
                     sg.popup("Preencha pelo menos Serviço e Senha.", title="Atenção")
