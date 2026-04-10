@@ -7,6 +7,10 @@ Projeto simples para gerenciamento de senhas com interface PySimpleGUI e armazen
 - Python 3.10+ (virtualenv recomendado)
 - Dependências listadas em `requirements.txt`
 
+## Observações para uso em Mac e Linux
+O projeto é desenvolvido e testado principalmente no Windows, mas pode ocorrer erros com a instalação e uso das dependências instaladas ou do ambiente virtual em sistemas Mac e Linux. Se você estiver usando um desses sistemas, certifique-se de ter o Python 3.10+ instalado e siga as instruções de instalação para criar um ambiente virtual e instalar as dependências. No entanto, esteja ciente de que pode haver problemas específicos relacionados ao sistema operacional que podem exigir ajustes adicionais.
+
+---
 **Instalação (Windows)**
 
 1. Clone o repositório e entre na pasta do projeto.
@@ -22,6 +26,26 @@ python -m venv venv
 ```powershell
 python -m pip install -r requirements.txt
 ```
+
+---
+
+**Instalação (Mac/Linux)**
+
+1. Clone o repositório e entre na pasta do projeto.
+2. Crie e ative um ambiente virtual:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+3. Instale dependências:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+---
 
 **Chave AES (obrigatória)**
 O projeto usa uma chave AES definida na variável de ambiente `AES_KEY` (hex). Gere uma chave com o utilitário incluso:
