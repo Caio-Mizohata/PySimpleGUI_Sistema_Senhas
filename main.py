@@ -14,7 +14,6 @@ def start_gui():
 
 
 def main():
-    # inicializa o banco de senhas
     try:
         asyncio.run(init_db())
     except Exception as e:

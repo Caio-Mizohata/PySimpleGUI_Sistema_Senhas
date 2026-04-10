@@ -1,6 +1,5 @@
 from argon2 import PasswordHasher
 import sqlite3
-import os
 
 
 async def init_db() -> None:
@@ -13,9 +12,12 @@ async def init_db() -> None:
             CREATE TABLE IF NOT EXISTS passwords (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 servico TEXT NOT NULL,
-                email TEXT,
+                credencial TEXT NOT NULL,
                 password TEXT NOT NULL,
+                notes TEXT DEFAULT NULL,
                 user_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
             """
@@ -39,15 +41,24 @@ async def init_db() -> None:
 
 def pre_save_password(password: str) -> str:
     password_hasher = PasswordHasher(
-        time_cost=3, memory_cost=64 * 1024, parallelism=2, hash_len=32, salt_len=16
+        time_cost=3, 
+        memory_cost=64 * 1024, # 64 MB
+        parallelism=2, 
+        hash_len=32, 
+        salt_len=16
     )
     return password_hasher.hash(password)
 
 
 def verify_password(stored_hash: str, provided_password: str) -> bool:
     password_hasher = PasswordHasher(
-        time_cost=3, memory_cost=64 * 1024, parallelism=2, hash_len=32, salt_len=16
+        time_cost=3, 
+        memory_cost=64 * 1024, # 64 MB
+        parallelism=2, 
+        hash_len=32, 
+        salt_len=16
     )
+
     try:
         password_hasher.verify(stored_hash, provided_password)
         return True

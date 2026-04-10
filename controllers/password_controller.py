@@ -1,24 +1,27 @@
+import asyncio
 import sqlite3
 from services.encrypt_service import EncryptService
+import os
+from dotenv import load_dotenv
 
 
 class PasswordController:
-    def __init__(self, db_path="banco_dados.db"):
+    def __init__(self, db_path: str = "banco_dados.db"):
         self.db_path = db_path
-        self.encrypt_service = EncryptService(
-            key=b"16-byte-long-key-for-AES"
-        )  # Replace with your actual key
+        load_dotenv()
+        self.encrypt_service = EncryptService(key=bytes.fromhex(os.getenv("AES_KEY")))
 
-    async def save_password(
-        self, servico: str, email: str, password: str, user_id: int
-    ) -> bool:
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.db_path)
+
+    async def save_password(self, servico: str, credencial: str, password: str, notes: str, user_id: int) -> bool:
+        conn = None
         try:
-            encrypted_password = self.encrypt_service.encrypt(password)
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO passwords (user_id, servico, email, password) VALUES (?, ?, ?, ?)",
-                (user_id, servico, email, encrypted_password),
+            encrypted_password = await asyncio.to_thread(self.encrypt_service.encrypt, password)
+            conn = self._connect()
+            conn.execute(
+                "INSERT INTO passwords (user_id, servico, credencial, password, notes) VALUES (?, ?, ?, ?, ?)",
+                (user_id, servico, credencial, encrypted_password, notes),
             )
             conn.commit()
             return True
@@ -29,19 +32,13 @@ class PasswordController:
             if conn:
                 conn.close()
 
-    async def get_password(self, servico: str, user_id: int) -> str:
+    async def get_password(self, servico: str, user_id: int) -> str | None:
+        conn = None
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT password FROM passwords WHERE servico = ? AND user_id = ?",
-                (servico, user_id),
-            )
-            result = cursor.fetchone()
-            if result:
-                return self.encrypt_service.decrypt(
-                    result[0]
-                )  # Retorna a senha descriptografada
+            conn = self._connect()
+            row = conn.execute("SELECT password FROM passwords WHERE servico = ? AND user_id = ?",(servico, user_id),).fetchone()
+            if row:
+                return await asyncio.to_thread(self.encrypt_service.decrypt, row[0])
             return None
         except Exception as e:
             print(f"Erro ao recuperar senha: {e}")
@@ -50,16 +47,39 @@ class PasswordController:
             if conn:
                 conn.close()
 
-    async def update_password(
-        self, servico: str, email: str, password: str, user_id: int
-    ) -> bool:
+    async def get_all_passwords(self, user_id: int) -> dict:
+        conn = None
         try:
-            encrypted_password = self.encrypt_service.encrypt(password)
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE passwords SET email = ?, password = ? WHERE servico = ? AND user_id = ?",
-                (email, encrypted_password, servico, user_id),
+            conn = self._connect()
+            rows = conn.execute(
+                "SELECT servico, credencial, password, notes FROM passwords WHERE user_id = ?",(user_id,),).fetchall()
+            result = {}
+            for servico, credencial, encrypted_password, notes in rows:
+                try:
+                    dec = await asyncio.to_thread(self.encrypt_service.decrypt, encrypted_password)
+                except Exception:
+                    dec = "<erro>"
+                result[servico] = {
+                    "credencial": credencial or "",
+                    "password": dec,
+                    "notes": notes or "",
+                }
+            return result
+        except Exception as e:
+            print(f"Erro ao listar senhas: {e}")
+            return {}
+        finally:
+            if conn:
+                conn.close()
+
+    async def update_password(self, servico: str, credencial: str, password: str, notes: str, user_id: int) -> bool:
+        conn = None
+        try:
+            encrypted_password = await asyncio.to_thread(self.encrypt_service.encrypt, password)
+            conn = self._connect()
+            conn.execute(
+                "UPDATE passwords SET credencial = ?, password = ?, notes = ? WHERE servico = ? AND user_id = ?",
+                (credencial, encrypted_password, notes, servico, user_id),
             )
             conn.commit()
             return True
@@ -70,25 +90,20 @@ class PasswordController:
             if conn:
                 conn.close()
 
-    async def get_all_passwords(self, user_id: int) -> dict:
+    async def delete_password(self, servico: str, user_id: int) -> bool:
+        conn = None
         try:
-            conn = sqlite3.connect(self.db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT servico, password FROM passwords WHERE user_id = ?", (user_id,)
+            conn = self._connect()
+            conn.execute(
+                "DELETE FROM passwords WHERE servico = ? AND user_id = ?",
+                (servico, user_id),
             )
-            rows = cursor.fetchall()
-            result = {}
-            for servico, enc in rows:
-                try:
-                    dec = self.encrypt_service.decrypt(enc)
-                except Exception:
-                    dec = "<erro>"
-                result[servico] = dec
-            return result
+            conn.commit()
+            return True
         except Exception as e:
-            print(f"Erro ao listar senhas: {e}")
-            return {}
+            print(f"Erro ao deletar senha: {e}")
+            return False
         finally:
             if conn:
                 conn.close()
+                
