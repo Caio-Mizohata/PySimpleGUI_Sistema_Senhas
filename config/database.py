@@ -37,6 +37,21 @@ async def init_db() -> None:
             """
         )
 
+         # Trigger para atualizar o campo created_at na tabela passwords
+        cursor.execute(
+            """
+            CREATE TRIGGER IF NOT EXISTS save_passwords_created_at
+            AFTER INSERT ON passwords
+            FOR EACH ROW
+            BEGIN
+               UPDATE passwords
+               SET created_at = datetime('now','localtime')
+               WHERE id = NEW.id;
+            END;
+            """
+        )
+
+        # Trigger para atualizar o campo updated_at na tabela passwords
         cursor.execute(
             """
             CREATE TRIGGER IF NOT EXISTS update_passwords_updated_at

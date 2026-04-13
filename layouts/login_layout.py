@@ -87,56 +87,59 @@ class LoginLayout:
             finalize=True,
             element_padding=(4, 6),
         )
+        try:
+            while True:
+                event, values = window.read()
 
-        while True:
-            event, values = window.read()
+                if event == sg.WIN_CLOSED:
+                    break
 
-            if event == sg.WIN_CLOSED:
-                break
+                if event == "-LOGIN-":
+                    username = values["-L-USER-"].strip()
+                    password = values["-L-PASS-"]
 
-            if event == "-LOGIN-":
-                username = values["-L-USER-"].strip()
-                password = values["-L-PASS-"]
+                    if not username or not password:
+                        sg.popup("Preencha usuário e senha.", title="Atenção")
+                        continue
 
-                if not username or not password:
-                    sg.popup("Preencha usuário e senha.", title="Atenção")
-                    continue
+                    try:
+                        user_id = asyncio.run(self.user_controller.login(username, password))
+                    except Exception as e:
+                        sg.popup(f"Erro no login: {e}", title="Erro")
+                        continue
 
-                try:
-                    user_id = asyncio.run(self.user_controller.login(username, password))
-                except Exception as e:
-                    sg.popup(f"Erro no login: {e}", title="Erro")
-                    continue
+                    if user_id:
+                        self._clear_inputs(window, ["-L-USER-", "-L-PASS-"])
+                        window.hide()
 
-                if user_id:
-                    self._clear_inputs(window, ["-L-USER-", "-L-PASS-"])
-                    DashboardLayout(password_controller=self.password_controller, user_id=user_id).run()
-                else:
-                    sg.popup("Usuário ou senha inválidos.", title="Erro")
+                        try:
+                            DashboardLayout(password_controller=self.password_controller, user_id=user_id).run()
+                        except Exception as e:
+                            sg.popup(f"Erro ao abrir dashboard: {e}", title="Erro")
+                        finally:
+                            window.un_hide()
+                    else:
+                        sg.popup("Usuário ou senha inválidos.", title="Erro")
 
-            if event == "-REGISTER-":
-                username = values["-R-USER-"].strip()
-                password = values["-R-PASS-"]
+                if event == "-REGISTER-":
+                    username = values["-R-USER-"].strip()
+                    password = values["-R-PASS-"]
 
-                if not username or not password:
-                    sg.popup("Preencha usuário e senha.", title="Atenção")
-                    continue
+                    if not username or not password:
+                        sg.popup("Preencha usuário e senha.", title="Atenção")
+                        continue
 
-                try:
-                    success = asyncio.run(self.user_controller.create_user(username, password))
-                except Exception as e:
-                    sg.popup(f"Erro no registro: {e}", title="Erro")
-                    continue
+                    try:
+                        success = asyncio.run(self.user_controller.create_user(username, password))
+                    except Exception as e:
+                        sg.popup(f"Erro no registro: {e}", title="Erro")
+                        continue
 
-                if success:
-                    sg.popup("Conta criada! Faça login na aba ao lado.", title="Sucesso")
-                    self._clear_inputs(window, ["-R-USER-", "-R-PASS-"])
-                    window["-TABGROUP-"].Widget.select(0)
-                else:
-                    sg.popup("Falha ao registrar. Tente outro nome de usuário.", title="Erro")
-
-        window.close()
-
-
-if __name__ == "__main__":
-    LoginLayout().run()
+                    if success:
+                        sg.popup("Conta criada! Faça login na aba ao lado.", title="Sucesso")
+                        self._clear_inputs(window, ["-R-USER-", "-R-PASS-"])
+                        window["-TABGROUP-"].Widget.select(0)
+                    else:
+                        sg.popup("Falha ao registrar. Tente outro nome de usuário.", title="Erro")
+        finally:
+            window.close()
