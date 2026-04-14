@@ -58,7 +58,8 @@ class PasswordController:
                 try:
                     dec = await asyncio.to_thread(self.encrypt_service.decrypt, encrypted_password)
                 except Exception:
-                    dec = "<erro>"
+                    dec = "Erro"
+                    print(f"Erro ao decifrar senha para serviço '{servico}' do usuário {user_id}")
                 result[servico] = {
                     "credencial": credencial or "",
                     "password": dec,

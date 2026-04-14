@@ -1,129 +1,109 @@
 import asyncio
-
 import PySimpleGUI as sg
-
 from controllers.password_controller import PasswordController
 from layouts.update_layout import UpdateLayout
+from helpers.dashboard_helper import DashboardHelper
 
 
 class DashboardLayout:
     def __init__(self, password_controller: PasswordController = None, user_id: int = None):
         self.password_controller = password_controller
         self.user_id = user_id
-        self.revealed: set = set()
-        self.passwords: dict = {}        
+        self.helper = DashboardHelper(self.password_controller, self.user_id)
+        self.revealed = self.helper.revealed
+        
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
-    def _normalize(self) -> dict:
-        # Garante que cada valor seja um dicionário
-        normalized = {}
-        for servico, val in self.passwords.items():
-            if isinstance(val, dict):
-                normalized[servico] = val
-            else:
-                normalized[servico] = {"credencial": "", "password": str(val), "notes": ""}
-        return normalized
-
-    def _build_table(self) -> list[list[str]]:
-        rows = []
-        for servico, info in self._normalize().items():
-            pw_display = info["password"] if servico in self.revealed else "••••••••••"
-            rows.append([servico, info.get("credencial", ""), pw_display, info.get("notes", "")])
-        return rows
-
-    def _reload_passwords(self):
-        try:
-            self.passwords = asyncio.run(self.password_controller.get_all_passwords(self.user_id))
-        except Exception as e:
-            sg.popup(f"Erro ao carregar senhas: {e}", title="Erro")
-
-    def _clear_form(self, window):
-        for k in ("-SERVICO-", "-CREDENCIAL-", "-PASS-", "-NOTES-"):
-            window[k].update("")
-
-    def _save_password(self, servico: str, credencial: str, password: str, notes: str) -> bool:
-        try:
-            return asyncio.run(self.password_controller.save_password(servico, credencial, password, notes, self.user_id))
-        except Exception as e:
-            sg.popup(f"Erro ao salvar: {e}", title="Erro")
-            return False
-
-    def _delete_password(self, servico: str) -> bool:
-        try:
-            return bool(asyncio.run(self.password_controller.delete_password(servico, self.user_id)))
-        except Exception as e:
-            sg.popup(f"Erro ao remover: {e}", title="Erro")
-            return False
-
-    # ------------------------------------------------------------------
     # Layout builders
-    # ------------------------------------------------------------------
-
     def _table_panel(self) -> list:
         return [
             [
                 sg.Table(
-                    values=self._build_table(),
+                    values=self.helper._build_table(),
                     headings=["Serviço", "Credencial", "Senha", "Notas"],
                     key="-TABLE-",
                     auto_size_columns=False,
-                    col_widths=[16, 18, 14, 22], # 4 colunas → 4 larguras
-                    num_rows=12,
+                    col_widths=[18, 20, 16, 24],
+                    num_rows=13,
                     enable_events=True,
                     select_mode=sg.TABLE_SELECT_MODE_BROWSE,
                     expand_x=True,
                     expand_y=True,
                     justification="left",
+                    alternating_row_color=sg.theme_background_color(),
                 )
             ],
+            [sg.HorizontalSeparator(pad=(0, (8, 4)))],
             [
-                sg.Button("🗑 Remover", key="-DELETE-"),
-                sg.Button("✏️ Editar", key="-EDIT-"),
-                sg.Button("👁 Revelar / Ocultar", key="-REVEAL-"),
+                sg.Button("Revelar / Ocultar", key="-REVEAL-", size=(20, 1)),
+                sg.Push(),
+                sg.Button("Editar", key="-EDIT-", size=(12, 1)),
+                sg.Button("Remover", key="-DELETE-", size=(12, 1), button_color=("white", "#c0392b")),
             ],
         ]
 
     def _form_panel(self) -> list:
+        label_size = (9, 1)
+        input_size = 24
+
         return [
-            [sg.Text("Adicionar senha", font=("Helvetica", 11, "bold"))],
-            [sg.HorizontalSeparator()],
-            [sg.Text("Serviço", size=10), sg.Input(key="-SERVICO-",    size=22)],
-            [sg.Text("Credencial", size=10), sg.Input(key="-CREDENCIAL-", size=22)],
-            [sg.Text("Senha", size=10), sg.Input(password_char="*", key="-PASS-", size=22)],
-            [sg.Text("Notas", size=10), sg.Multiline(key="-NOTES-",  size=(22, 3))],
-            [sg.HorizontalSeparator()],
-            [sg.Push(), sg.Button("💾  Salvar", key="-SAVE-", size=12), sg.Push()],
+            [sg.Text("Nova Senha", font=("Helvetica", 11, "bold"), pad=(0, (0, 2)))],
+            [sg.HorizontalSeparator(pad=(0, (0, 8)))],
+            [
+                sg.Text("Serviço", size=label_size),
+                sg.Input(key="-SERVICO-", size=input_size, tooltip="Ex: Gmail, GitHub…"),
+            ],
+            [
+                sg.Text("Credencial", size=label_size),
+                sg.Input(key="-CREDENCIAL-", size=input_size, tooltip="Usuário ou e-mail"),
+            ],
+            [
+                sg.Text("Senha", size=label_size),
+                sg.Input(password_char="*", key="-PASS-", size=input_size),
+            ],
+            [
+                sg.Text("Notas", size=label_size),
+                sg.Multiline(key="-NOTES-", size=(input_size, 3), no_scrollbar=True),
+            ],
+            [sg.HorizontalSeparator(pad=(0, (8, 8)))],
+            [sg.Push(), sg.Button("💾  Salvar", key="-SAVE-", size=(14, 1)), sg.Push()],
         ]
 
     def _layout(self) -> list:
+        # Cabeçalho, tabela e formulário lado a lado
         return [
             [
-                sg.Text("Dashboard", font=("Helvetica", 14, "bold")),
+                sg.Text("Painel principal", font=("Helvetica", 14, "bold")),
                 sg.Push(),
-                sg.Button("Sair", key="-EXIT-", size=8),
+                sg.Button("Sair", key="-EXIT-", size=(8, 1)),
             ],
-            [sg.HorizontalSeparator()],
+            [sg.HorizontalSeparator(pad=(0, (2, 8)))], 
             [
-                sg.Column(self._table_panel(), expand_x=True, expand_y=True, vertical_alignment="top"),
-                sg.VerticalSeparator(),
-                sg.Column(self._form_panel(), size=(260, None), vertical_alignment="top", pad=(10, 0)),
+                sg.Column(
+                    self._table_panel(),
+                    expand_x=True,
+                    expand_y=True,
+                    vertical_alignment="top",
+                    pad=(0, 0),
+                ),
+                sg.VerticalSeparator(pad=(10, 0)),
+                sg.Column(
+                    self._form_panel(),
+                    size=(270, None),
+                    vertical_alignment="top",
+                    pad=(8, 0),
+                ),
             ],
         ]
 
-    # ------------------------------------------------------------------
+   
     # Event loop
-    # ------------------------------------------------------------------
-
     def run(self):
-        self._reload_passwords()
+        self.helper._reload_passwords()
 
         window = sg.Window(
-            "Dashboard – Gerenciador de Senhas",
+            "Gerenciador de Senhas",
             self._layout(),
-            size=(1000, 570),
+            size=(1056, 580),
             resizable=True,
             finalize=True,
         )
@@ -135,39 +115,42 @@ class DashboardLayout:
                 break
 
             selected = values.get("-TABLE-", [])
-            table = self._build_table()
+            table = self.helper._build_table()
             row_idx = selected[0] if selected else -1
             servico = table[row_idx][0] if 0 <= row_idx < len(table) else None
 
-            # ── REVELAR / OCULTAR ──────────────────────────────────────
+            # REVELAR / OCULTAR 
             if event == "-REVEAL-":
                 if servico is None:
                     sg.popup("Selecione uma linha para revelar a senha.", title="Atenção")
                     continue
-                self.revealed.discard(servico) if servico in self.revealed else self.revealed.add(servico)
-                window["-TABLE-"].update(values=self._build_table())
+                if servico in self.revealed:
+                    self.revealed.discard(servico)
+                else:
+                    self.revealed.add(servico)
+                window["-TABLE-"].update(values=self.helper._build_table())
 
-            # ── REMOVER ────────────────────────────────────────────────
+            # REMOVER
             if event == "-DELETE-":
                 if servico is None:
                     sg.popup("Selecione uma linha para remover.", title="Atenção")
                     continue
                 if sg.popup_yes_no(f"Remover a senha de '{servico}'?", title="Confirmar") != "Yes":
                     continue
-                if self._delete_password(servico):
-                    self._reload_passwords()
+                if self.helper._delete_password(servico):
+                    self.helper._reload_passwords()
                     self.revealed.discard(servico)
-                    window["-TABLE-"].update(values=self._build_table())
+                    window["-TABLE-"].update(values=self.helper._build_table())
                     sg.popup("Senha removida com sucesso!", title="Sucesso")
                 else:
                     sg.popup("Falha ao remover a senha no banco.", title="Erro")
 
-            # ── EDITAR ─────────────────────────────────────────────────
+            # EDITAR
             if event == "-EDIT-":
                 if servico is None:
                     sg.popup("Selecione uma linha para editar.", title="Atenção")
                     continue
-                info = self.passwords.get(servico, {})
+                info = self.helper.passwords.get(servico, {})
                 updated = UpdateLayout(self.password_controller).show_update_window(
                     servico,
                     info.get("credencial", ""),
@@ -176,10 +159,10 @@ class DashboardLayout:
                     self.user_id,
                 )
                 if updated:
-                    self._reload_passwords()
-                    window["-TABLE-"].update(values=self._build_table())
+                    self.helper._reload_passwords()
+                    window["-TABLE-"].update(values=self.helper._build_table())
 
-            # ── SALVAR NOVA SENHA ──────────────────────────────────────
+            # SALVAR NOVA SENHA
             if event == "-SAVE-":
                 servico_form = values["-SERVICO-"].strip()
                 credencial_form = values["-CREDENCIAL-"].strip()
@@ -190,10 +173,10 @@ class DashboardLayout:
                     sg.popup("Preencha pelo menos Serviço e Senha.", title="Atenção")
                     continue
 
-                if self._save_password(servico_form, credencial_form, passwd_form, notes_form):
-                    self._reload_passwords()
-                    self._clear_form(window)
-                    window["-TABLE-"].update(values=self._build_table())
+                if self.helper._save_password(servico_form, credencial_form, passwd_form, notes_form):
+                    self.helper._reload_passwords()
+                    self.helper._clear_form(window)
+                    window["-TABLE-"].update(values=self.helper._build_table())
                     sg.popup("Senha salva com sucesso!", title="Sucesso")
                 else:
                     sg.popup("Falha ao salvar a senha.", title="Erro")
@@ -203,3 +186,4 @@ class DashboardLayout:
 
 if __name__ == "__main__":
     DashboardLayout().run()
+    
