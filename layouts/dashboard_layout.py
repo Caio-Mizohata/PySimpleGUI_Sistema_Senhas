@@ -1,4 +1,3 @@
-import asyncio
 import PySimpleGUI as sg
 from controllers.password_controller import PasswordController
 from layouts.update_layout import UpdateLayout
