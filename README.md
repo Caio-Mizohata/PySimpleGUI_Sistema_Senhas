@@ -78,6 +78,7 @@ Isso inicializa o banco (`banco_dados.db`) e abre a interface.
 - `main.py` — inicia o banco e a GUI
 - `generate_key.py` — gera chave AES (hex)
 - `config/database.py` — inicialização do SQLite
+- `helpers/dashboard_helper.py` — lógica de construção da tabela
 - `layouts/` — telas PySimpleGUI
 - `controllers/` — lógica de acesso ao banco
 - `services/` — serviço de criptografia
