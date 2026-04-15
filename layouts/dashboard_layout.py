@@ -140,9 +140,9 @@ class DashboardLayout:
                     self.helper._reload_passwords()
                     self.revealed.discard(servico)
                     window["-TABLE-"].update(values=self.helper._build_table())
-                    sg.popup("Senha removida com sucesso!", title="Sucesso")
+                    sg.popup("Credenciais removidas com sucesso!", title="Sucesso")
                 else:
-                    sg.popup("Falha ao remover a senha no banco.", title="Erro")
+                    sg.popup("Falha ao remover as credenciais", title="Erro")
 
             # EDITAR
             if event == "-EDIT-":
@@ -176,9 +176,9 @@ class DashboardLayout:
                     self.helper._reload_passwords()
                     self.helper._clear_form(window)
                     window["-TABLE-"].update(values=self.helper._build_table())
-                    sg.popup("Senha salva com sucesso!", title="Sucesso")
+                    sg.popup("Credenciais salvas com sucesso!", title="Sucesso")
                 else:
-                    sg.popup("Falha ao salvar a senha.", title="Erro")
+                    sg.popup("Falha ao salvar as credenciais.", title="Erro")
 
         window.close()
 
